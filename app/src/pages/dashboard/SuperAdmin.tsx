@@ -1,0 +1,481 @@
+import { useState } from "react";
+
+import { DashboardLayout } from "@/components/DashboardLayout";
+import { DashboardStats } from "@/components/dashboard/StatCards";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { trpc } from "@/providers/trpc";
+import { Plus, Users, Shield, Layers, Settings, Eye, EyeOff, Loader2 } from "lucide-react";
+import { RoleLabels } from "@contracts/constants";
+
+export default function SuperAdminDashboard() {
+  
+  const [activeTab, setActiveTab] = useState("overview");
+  const { data: stats } = trpc.stats.dashboard.useQuery();
+  const { data: users } = trpc.users.list.useQuery();
+  
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Super Admin Dashboard</h1>
+            <p className="text-gray-600">Manage the entire NYSC Camp Evaluation System</p>
+          </div>
+        </div>
+
+        {stats && <DashboardStats stats={stats} />}
+
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="bg-white border">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="commandants">Commandants</TabsTrigger>
+            <TabsTrigger value="batches">Batches</TabsTrigger>
+            <TabsTrigger value="users">All Users</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>System Overview</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <QuickActionCard
+                    title="Manage Commandants"
+                    description="Create and manage camp & state commandants"
+                    icon={<Shield className="w-6 h-6" />}
+                    onClick={() => setActiveTab("commandants")}
+                  />
+                  <QuickActionCard
+                    title="Manage Batches"
+                    description="Create and activate orientation batches"
+                    icon={<Layers className="w-6 h-6" />}
+                    onClick={() => setActiveTab("batches")}
+                  />
+                  <QuickActionCard
+                    title="View All Users"
+                    description="See all staff accounts in the system"
+                    icon={<Users className="w-6 h-6" />}
+                    onClick={() => setActiveTab("users")}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="commandants" className="mt-4">
+            <CommandantsTab />
+          </TabsContent>
+
+          <TabsContent value="batches" className="mt-4">
+            <BatchesTab />
+          </TabsContent>
+
+          <TabsContent value="users" className="mt-4">
+            <UsersTab users={users || []} />
+          </TabsContent>
+
+          <TabsContent value="settings" className="mt-4">
+            <SettingsTab />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </DashboardLayout>
+  );
+}
+
+function QuickActionCard({ title, description, icon, onClick }: { title: string; description: string; icon: React.ReactNode; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="p-4 border rounded-lg hover:border-[#004d00] hover:bg-green-50 transition-colors text-left"
+    >
+      <div className="w-10 h-10 bg-[#004d00]/10 rounded-lg flex items-center justify-center text-[#004d00] mb-3">
+        {icon}
+      </div>
+      <h3 className="font-medium text-gray-900">{title}</h3>
+      <p className="text-sm text-gray-600 mt-1">{description}</p>
+    </button>
+  );
+}
+
+function CommandantsTab() {
+  const [open, setOpen] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState<"camp_commandant" | "state_commandant">("camp_commandant");
+  const [state, setState] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const utils = trpc.useUtils();
+
+  const { data: commandants } = trpc.users.search.useQuery({ role: "camp_commandant" });
+  const { data: stateCommandants } = trpc.users.search.useQuery({ role: "state_commandant" });
+
+  const createMutation = trpc.users.createAdmin.useMutation({
+    onSuccess: () => {
+      utils.users.list.invalidate();
+      setOpen(false);
+      setFullName("");
+      setUsername("");
+      setPassword("");
+    },
+  });
+
+  const handleCreate = () => {
+    if (!fullName || !username || !password) return;
+    createMutation.mutate({ fullName, username, password, role, state: state || undefined });
+  };
+
+  const allCommandants = [...(commandants || []), ...(stateCommandants || [])];
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>Commandants</CardTitle>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-[#004d00] hover:bg-[#003300]">
+              <Plus className="w-4 h-4 mr-2" />
+              Create Commandant
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create New Commandant</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              <div>
+                <Label>Full Name</Label>
+                <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Enter full name" />
+              </div>
+              <div>
+                <Label>Username</Label>
+                <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Enter username" />
+              </div>
+              <div>
+                <Label>Password</Label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter password"
+                  />
+                  <button onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <Label>Role</Label>
+                <Select value={role} onValueChange={(v) => setRole(v as "camp_commandant" | "state_commandant")}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="camp_commandant">Camp Commandant</SelectItem>
+                    <SelectItem value="state_commandant">State Commandant</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>State</Label>
+                <Select value={state} onValueChange={setState}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select state" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ondo">Ondo</SelectItem>
+                    <SelectItem value="lagos">Lagos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button onClick={handleCreate} className="w-full bg-[#004d00] hover:bg-[#003300]" disabled={createMutation.isPending}>
+                {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create Commandant"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Username</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>State</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {allCommandants.map((user) => (
+              <TableRow key={user.id}>
+                <TableCell className="font-medium">{user.fullName}</TableCell>
+                <TableCell>@{user.username}</TableCell>
+                <TableCell>
+                  <Badge variant={user.role === "state_commandant" ? "default" : "secondary"}>
+                    {RoleLabels[user.role]}
+                  </Badge>
+                </TableCell>
+                <TableCell className="capitalize">{user.state}</TableCell>
+                <TableCell>
+                  <Badge variant={user.isActive ? "default" : "destructive"} className={user.isActive ? "bg-green-100 text-green-700" : ""}>
+                    {user.isActive ? "Active" : "Inactive"}
+                  </Badge>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
+function BatchesTab() {
+  const { data: batches } = trpc.batches.list.useQuery();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [state, setState] = useState<"ondo" | "lagos">("ondo");
+  const [description, setDescription] = useState("");
+  const utils = trpc.useUtils();
+
+  
+  const createMutation = trpc.batches.create.useMutation({
+    onSuccess: () => {
+      utils.batches.list.invalidate();
+      setOpen(false);
+      setName("");
+      setYear(new Date().getFullYear());
+      setDescription("");
+    },
+  });
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>Orientation Batches</CardTitle>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-[#004d00] hover:bg-[#003300]">
+              <Plus className="w-4 h-4 mr-2" />
+              Create Batch
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create New Batch</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              <div>
+                <Label>Batch Name</Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Batch A 2025" />
+              </div>
+              <div>
+                <Label>Year</Label>
+                <Input type="number" value={year} onChange={(e) => setYear(Number(e.target.value))} />
+              </div>
+              <div>
+                <Label>State</Label>
+                <Select value={state} onValueChange={(v) => setState(v as "ondo" | "lagos")}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ondo">Ondo</SelectItem>
+                    <SelectItem value="lagos">Lagos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Description (Optional)</Label>
+                <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" />
+              </div>
+              <Button onClick={() => createMutation.mutate({ name, year, state, description })} className="w-full bg-[#004d00] hover:bg-[#003300]" disabled={createMutation.isPending}>
+                {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create Batch"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Year</TableHead>
+              <TableHead>State</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {batches?.map((batch) => (
+              <TableRow key={batch.id}>
+                <TableCell className="font-medium">{batch.name}</TableCell>
+                <TableCell>{batch.year}</TableCell>
+                <TableCell className="capitalize">{batch.state}</TableCell>
+                <TableCell>
+                  <Badge variant={batch.isActive ? "default" : "secondary"} className={batch.isActive ? "bg-green-100 text-green-700" : ""}>
+                    {batch.isActive ? "Active" : "Inactive"}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="flex gap-2">
+                    {batch.isActive ? (
+                      <Button size="sm" variant="outline" onClick={() => {}}>
+                        Deactivate
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="outline" onClick={() => {}}>
+                        Activate
+                      </Button>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
+function UsersTab({ users }: { users: any[] }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>All Users</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Username</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>State</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {users.map((user) => (
+              <TableRow key={user.id}>
+                <TableCell className="font-medium">{user.fullName}</TableCell>
+                <TableCell>@{user.username}</TableCell>
+                <TableCell>
+                  <Badge variant="secondary">{RoleLabels[user.role]}</Badge>
+                </TableCell>
+                <TableCell className="capitalize">{user.state}</TableCell>
+                <TableCell>
+                  <Badge variant={user.isActive ? "default" : "destructive"} className={user.isActive ? "bg-green-100 text-green-700" : ""}>
+                    {user.isActive ? "Active" : "Inactive"}
+                  </Badge>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SettingsTab() {
+  const { data: activeBatch } = trpc.batches.getActive.useQuery();
+  const { user } = useAuthHook();
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+
+  const changePasswordMutation = trpc.customAuth.changePassword.useMutation({
+    onSuccess: () => {
+      setShowChangePassword(false);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    },
+    onError: (err) => setPasswordError(err.message),
+  });
+
+  const handleChangePassword = () => {
+    setPasswordError("");
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Passwords do not match");
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordError("Password must be at least 6 characters");
+      return;
+    }
+    changePasswordMutation.mutate({ currentPassword, newPassword });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>System Settings</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 border rounded-lg">
+            <p className="text-sm text-gray-600">System Name</p>
+            <p className="font-medium">NYSC Camp Evaluation System</p>
+          </div>
+          <div className="p-4 border rounded-lg">
+            <p className="text-sm text-gray-600">Current Batch</p>
+            <p className="font-medium">{activeBatch?.name || "None"}</p>
+          </div>
+          <div className="p-4 border rounded-lg">
+            <p className="text-sm text-gray-600">Admin</p>
+            <p className="font-medium">{user?.fullName}</p>
+            <p className="text-xs text-gray-500">{RoleLabels[user?.role || ""]}</p>
+          </div>
+          <div className="p-4 border rounded-lg">
+            <p className="text-sm text-gray-600">Form Type</p>
+            <p className="font-medium">Corps Member Registration</p>
+          </div>
+        </div>
+
+        {!showChangePassword ? (
+          <Button onClick={() => setShowChangePassword(true)} variant="outline">
+            <Settings className="w-4 h-4 mr-2" />
+            Change Password
+          </Button>
+        ) : (
+          <div className="space-y-3 p-4 border rounded-lg">
+            <h4 className="font-medium">Change Password</h4>
+            <Input type="password" placeholder="Current password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+            <Input type="password" placeholder="New password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+            <Input type="password" placeholder="Confirm new password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+            {passwordError && <p className="text-red-500 text-sm">{passwordError}</p>}
+            <div className="flex gap-2">
+              <Button onClick={() => setShowChangePassword(false)} variant="outline">Cancel</Button>
+              <Button onClick={handleChangePassword} className="bg-[#004d00] hover:bg-[#003300]" disabled={changePasswordMutation.isPending}>
+                {changePasswordMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Update Password"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+import { useAuth as useAuthHook } from "@/hooks/useAuth";
