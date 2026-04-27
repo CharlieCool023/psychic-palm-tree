@@ -1,17 +1,16 @@
-import * as admin from "firebase-admin";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const admin = require("firebase-admin") as typeof import("firebase-admin");
 
 if (!admin.apps.length) {
   const serviceAccountJson = process.env.GOOGLE_SERVICE_ACCOUNT;
-
   if (serviceAccountJson) {
-    // Running on Render or any non-GCP host — use service account key from env
     const serviceAccount = JSON.parse(serviceAccountJson);
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
       projectId: "nyscondocamp",
     });
   } else {
-    // Running on GCP (Cloud Run, Firebase Functions) — use ADC
     admin.initializeApp({ projectId: "nyscondocamp" });
   }
 }
