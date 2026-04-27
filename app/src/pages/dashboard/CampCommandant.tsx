@@ -33,9 +33,12 @@ export default function CampCommandantDashboard() {
 
   
 
+  const { refetch: fetchCsv } = trpc.export.csv.useQuery({ batchId }, { enabled: false });
+
   const handleExport = async () => {
-    const result = await trpc.export.csv.useQuery({ batchId });
-    const blob = new Blob([result.data?.csv || ""], { type: "text/csv" });
+    const result = await fetchCsv();
+    const csv = result.data?.csv || "";
+    const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -245,12 +248,12 @@ function StaffTab() {
   const { data: staff } = trpc.users.search.useQuery({ search, role: roleFilter || undefined });
   const createMutation = trpc.users.create.useMutation({
     onSuccess: () => {
+      utils.users.search.invalidate();
       utils.users.list.invalidate();
       setOpen(false);
-      setFullName("");
-      setUsername("");
-      setPassword("");
+      setFullName(""); setUsername(""); setPassword("");
     },
+    onError: (err) => alert(err.message),
   });
 
   const groupedStaff = {
@@ -402,15 +405,20 @@ function BatchesTab() {
   const [description, setDescription] = useState("");
   const utils = trpc.useUtils();
 
-  
   const createMutation = trpc.batches.create.useMutation({
     onSuccess: () => {
       utils.batches.list.invalidate();
-      setOpen(false);
-      setName("");
-      setYear(new Date().getFullYear());
-      setDescription("");
+      setOpen(false); setName(""); setYear(new Date().getFullYear()); setDescription("");
     },
+    onError: (err) => alert(err.message),
+  });
+
+  const activateMutation = trpc.batches.activate.useMutation({
+    onSuccess: () => utils.batches.list.invalidate(),
+  });
+
+  const deactivateMutation = trpc.batches.deactivate.useMutation({
+    onSuccess: () => utils.batches.list.invalidate(),
   });
 
   return (
@@ -440,9 +448,7 @@ function BatchesTab() {
               <div>
                 <Label>State</Label>
                 <Select value={state} onValueChange={(v) => setState(v as "ondo" | "lagos")}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ondo">Ondo</SelectItem>
                     <SelectItem value="lagos">Lagos</SelectItem>
@@ -453,7 +459,7 @@ function BatchesTab() {
                 <Label>Description (Optional)</Label>
                 <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" />
               </div>
-              <Button onClick={() => createMutation.mutate({ name, year, state, description })} className="w-full bg-[#004d00] hover:bg-[#003300]" disabled={createMutation.isPending}>
+              <Button onClick={() => createMutation.mutate({ name, year, state, description })} className="w-full bg-[#004d00] hover:bg-[#003300]" disabled={createMutation.isPending || !name}>
                 {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create Batch"}
               </Button>
             </div>
@@ -468,6 +474,7 @@ function BatchesTab() {
               <TableHead>Year</TableHead>
               <TableHead>State</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -480,6 +487,17 @@ function BatchesTab() {
                   <Badge variant={batch.isActive ? "default" : "secondary"} className={batch.isActive ? "bg-green-100 text-green-700" : ""}>
                     {batch.isActive ? "Active" : "Inactive"}
                   </Badge>
+                </TableCell>
+                <TableCell>
+                  {batch.isActive ? (
+                    <Button size="sm" variant="outline" onClick={() => deactivateMutation.mutate({ id: batch.id })} disabled={deactivateMutation.isPending}>
+                      {deactivateMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Deactivate"}
+                    </Button>
+                  ) : (
+                    <Button size="sm" className="bg-[#004d00] hover:bg-[#003300] text-white" onClick={() => activateMutation.mutate({ id: batch.id })} disabled={activateMutation.isPending}>
+                      {activateMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Activate"}
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
