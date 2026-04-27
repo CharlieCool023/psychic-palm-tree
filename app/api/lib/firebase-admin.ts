@@ -1,5 +1,5 @@
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
+// require() is provided by the esbuild banner at bundle top-level
+declare const require: NodeRequire;
 const admin = require("firebase-admin") as typeof import("firebase-admin");
 
 if (!admin.apps.length) {
