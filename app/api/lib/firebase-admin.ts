@@ -5,13 +5,22 @@ const admin = require("firebase-admin") as typeof import("firebase-admin");
 if (!admin.apps.length) {
   const serviceAccountJson = process.env.GOOGLE_SERVICE_ACCOUNT;
   if (serviceAccountJson) {
-    const serviceAccount = JSON.parse(serviceAccountJson);
+    try {
+      const serviceAccount = JSON.parse(serviceAccountJson);
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        projectId: serviceAccount.project_id || "nyscondocamp",
+      });
+    } catch (e) {
+      console.warn("Failed to parse service account, using default:", e);
+      admin.initializeApp({
+        projectId: "nyscondocamp",
+      });
+    }
+  } else {
     admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
       projectId: "nyscondocamp",
     });
-  } else {
-    admin.initializeApp({ projectId: "nyscondocamp" });
   }
 }
 

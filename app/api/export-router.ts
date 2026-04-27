@@ -4,6 +4,12 @@ import { getAllCorpsMembers, getCorpsMemberById, getHigherInstitutionsByCorpsMem
 import { getEvaluationsByCorpsMember } from "./queries/evaluations";
 import { getCommentsByCorpsMember, getCommandantCommentByCorpsMember } from "./queries/comments";
 
+function safeValue(value: any, defaultValue = ""): string {
+  if (value === null || value === undefined) return defaultValue;
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
 export const exportRouter = createRouter({
   csv: anyStaffQuery
     .input(z.object({ batchId: z.string().optional() }))
@@ -19,14 +25,22 @@ export const exportRouter = createRouter({
       ];
 
       const rows = members.map((m) => [
-        m.id, m.surname, m.otherNames, m.stateCode, m.callUpNumber,
-        m.phoneNumber, m.stateOfOrigin, m.stateOfDeployment,
-        m.qualification, m.areaOfSpecialization, m.platoon,
-        m.isEvaluatedByPlatoon ? "Yes" : "No",
-        m.isEvaluatedByManOWar ? "Yes" : "No",
-        m.hasSoldierComment ? "Yes" : "No",
-        m.hasCommandantComment ? "Yes" : "No",
-        m.campExperienceComment || "",
+        safeValue(m.id),
+        safeValue(m.surname),
+        safeValue(m.otherNames),
+        safeValue(m.stateCode),
+        safeValue(m.callUpNumber),
+        safeValue(m.phoneNumber),
+        safeValue(m.stateOfOrigin),
+        safeValue(m.stateOfDeployment),
+        safeValue(m.qualification),
+        safeValue(m.areaOfSpecialization),
+        safeValue(m.platoon),
+        safeValue(m.isEvaluatedByPlatoon ? "Yes" : "No"),
+        safeValue(m.isEvaluatedByManOWar ? "Yes" : "No"),
+        safeValue(m.hasSoldierComment ? "Yes" : "No"),
+        safeValue(m.hasCommandantComment ? "Yes" : "No"),
+        safeValue(m.campExperienceComment || ""),
       ]);
 
       const csvContent = [

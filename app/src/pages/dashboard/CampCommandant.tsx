@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { DashboardStats } from "@/components/dashboard/StatCards";
@@ -8,9 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { trpc } from "@/providers/trpc";
 import { Plus, Search, Eye, Download, Printer, UserPlus, Loader2 } from "lucide-react";
 import { RoleLabels } from "@contracts/constants";
@@ -19,9 +19,10 @@ export default function CampCommandantDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [search, setSearch] = useState("");
   const [platoonFilter, setPlatoonFilter] = useState<string>("");
-  const [batchId] = useState<string | undefined>();
+  const [batchId, setBatchId] = useState<string | undefined>();
   const [evalStatusFilter, setEvalStatusFilter] = useState<string>("");
   const { data: stats } = trpc.stats.dashboard.useQuery();
+  const { data: batches } = trpc.batches.list.useQuery();
   
   const { data: members } = trpc.corpsMembers.list.useQuery({
     batchId,
@@ -29,23 +30,64 @@ export default function CampCommandantDashboard() {
     platoon: platoonFilter ? Number(platoonFilter) : undefined,
     evaluatedBy: evalStatusFilter || undefined,
   });
-  
-
-  
 
   const { refetch: fetchCsv } = trpc.export.csv.useQuery({ batchId }, { enabled: false });
 
   const handleExport = async () => {
     const result = await fetchCsv();
     const csv = result.data?.csv || "";
-    const blob = new Blob([csv], { type: "text/csv" });
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `corps-members-${new Date().toISOString().split("T")[0]}.csv`;
+    const batchName = batches?.find(b => b.id === batchId)?.name || "all";
+    a.download = `corps-members-${batchName}-${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  const handlePrint = () => {
+    const printContent = document.getElementById("printable-table");
+    if (!printContent) return;
+    
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Corps Members Report</title>
+            <style>
+              body { font-family: Arial, sans-serif; padding: 20px; }
+              table { width: 100%; border-collapse: collapse; }
+              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+              th { background-color: #004d00; color: white; }
+              tr:nth-child(even) { background-color: #f2f2f2; }
+              h1 { color: #004d00; }
+            </style>
+          </head>
+          <body>
+            <h1>Corps Members Report${batchId ? ` - Batch: ${batches?.find(b => b.id === batchId)?.name}` : ''}</h1>
+            <p>Generated: ${new Date().toLocaleDateString()}</p>
+            ${printContent.innerHTML}
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 500);
+    }
+  };
+
+  const activeBatch = batches?.find(b => b.isActive);
+
+  useEffect(() => {
+    if (activeBatch && !batchId) {
+      setBatchId(activeBatch.id);
+    }
+  }, [activeBatch, batchId]);
 
   return (
     <DashboardLayout>
@@ -109,6 +151,19 @@ export default function CampCommandantDashboard() {
                       className="pl-9"
                     />
                   </div>
+                  <Select value={batchId || ""} onValueChange={setBatchId}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Batch" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All Batches</SelectItem>
+                      {batches?.map((b) => (
+                        <SelectItem key={b.id} value={b.id}>
+                          {b.name} {b.isActive ? "(Active)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Select value={platoonFilter} onValueChange={setPlatoonFilter}>
                     <SelectTrigger className="w-36">
                       <SelectValue placeholder="Platoon" />
@@ -133,47 +188,54 @@ export default function CampCommandantDashboard() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>State Code</TableHead>
-                      <TableHead>Platoon</TableHead>
-                      <TableHead>Evaluation Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {members?.map((member) => (
-                      <TableRow key={member.id}>
-                        <TableCell className="font-medium">
-                          {member.surname} {member.otherNames}
-                        </TableCell>
-                        <TableCell>{member.stateCode}</TableCell>
-                        <TableCell>Platoon {member.platoon}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-1 flex-wrap">
-                            <Badge variant={member.isEvaluatedByPlatoon ? "default" : "secondary"} className={member.isEvaluatedByPlatoon ? "bg-green-100 text-green-700" : ""}>
-                              PI {member.isEvaluatedByPlatoon ? "✓" : "○"}
-                            </Badge>
-                            <Badge variant={member.isEvaluatedByManOWar ? "default" : "secondary"} className={member.isEvaluatedByManOWar ? "bg-blue-100 text-blue-700" : ""}>
-                              MOW {member.isEvaluatedByManOWar ? "✓" : "○"}
-                            </Badge>
-                            <Badge variant={member.hasSoldierComment ? "default" : "secondary"} className={member.hasSoldierComment ? "bg-amber-100 text-amber-700" : ""}>
-                              S {member.hasSoldierComment ? "✓" : "○"}
-                            </Badge>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Button size="sm" variant="outline" onClick={() => {}}>
-                            <Eye className="w-3 h-3 mr-1" />
-                            View
-                          </Button>
-                        </TableCell>
+                <div id="printable-table" className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>State Code</TableHead>
+                        <TableHead>Batch</TableHead>
+                        <TableHead>Platoon</TableHead>
+                        <TableHead>Evaluation Status</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {members?.map((member) => {
+                        const memberBatch = batches?.find(b => b.id === member.batchId);
+                        return (
+                          <TableRow key={member.id}>
+                            <TableCell className="font-medium">
+                              {member.surname} {member.otherNames}
+                            </TableCell>
+                            <TableCell>{member.stateCode}</TableCell>
+                            <TableCell>{memberBatch?.name || 'N/A'}</TableCell>
+                            <TableCell>Platoon {member.platoon}</TableCell>
+                            <TableCell>
+                              <div className="flex gap-1 flex-wrap">
+                                <Badge variant={member.isEvaluatedByPlatoon ? "default" : "secondary"} className={member.isEvaluatedByPlatoon ? "bg-green-100 text-green-700" : ""}>
+                                  PI {member.isEvaluatedByPlatoon ? "✓" : "○"}
+                                </Badge>
+                                <Badge variant={member.isEvaluatedByManOWar ? "default" : "secondary"} className={member.isEvaluatedByManOWar ? "bg-blue-100 text-blue-700" : ""}>
+                                  MOW {member.isEvaluatedByManOWar ? "✓" : "○"}
+                                </Badge>
+                                <Badge variant={member.hasSoldierComment ? "default" : "secondary"} className={member.hasSoldierComment ? "bg-amber-100 text-amber-700" : ""}>
+                                  S {member.hasSoldierComment ? "✓" : "○"}
+                                </Badge>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Button size="sm" variant="outline" onClick={() => {}}>
+                                <Eye className="w-3 h-3 mr-1" />
+                                View
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -189,7 +251,7 @@ export default function CampCommandantDashboard() {
           <TabsContent value="export" className="mt-4">
             <Card>
               <CardHeader>
-                <CardTitle>Export & Print</CardTitle>
+                <CardTitle>Export & Print Reports</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -197,8 +259,22 @@ export default function CampCommandantDashboard() {
                     <CardContent className="p-6">
                       <Download className="w-8 h-8 text-[#004d00] mb-3" />
                       <h3 className="font-medium">Export to CSV</h3>
-                      <p className="text-sm text-gray-600 mt-1">Download all corps member data</p>
-                      <Button onClick={handleExport} className="mt-3 bg-[#004d00] hover:bg-[#003300]">
+                      <p className="text-sm text-gray-600 mt-1">Download all corps member data with no empty fields</p>
+                      <div className="mt-3">
+                        <Label>Select Batch</Label>
+                        <Select value={batchId || ""} onValueChange={setBatchId} className="mt-1">
+                          <SelectTrigger>
+                            <SelectValue placeholder="All Batches" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">All Batches</SelectItem>
+                            {batches?.map((b) => (
+                              <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button onClick={handleExport} className="mt-3 w-full bg-[#004d00] hover:bg-[#003300]">
                         <Download className="w-4 h-4 mr-2" />
                         Export CSV
                       </Button>
@@ -207,11 +283,11 @@ export default function CampCommandantDashboard() {
                   <Card>
                     <CardContent className="p-6">
                       <Printer className="w-8 h-8 text-[#004d00] mb-3" />
-                      <h3 className="font-medium">Print Reports</h3>
-                      <p className="text-sm text-gray-600 mt-1">Generate evaluation reports</p>
-                      <Button onClick={() => window.print()} className="mt-3 bg-[#004d00] hover:bg-[#003300]">
+                      <h3 className="font-medium">Print Detailed Report</h3>
+                      <p className="text-sm text-gray-600 mt-1">Generate printable report with all member details</p>
+                      <Button onClick={handlePrint} className="mt-3 w-full bg-[#004d00] hover:bg-[#003300]">
                         <Printer className="w-4 h-4 mr-2" />
-                        Print
+                        Generate Print View
                       </Button>
                     </CardContent>
                   </Card>
@@ -241,9 +317,11 @@ function StaffTab() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"platoon_instructor" | "man_o_war_instructor" | "soldier">("platoon_instructor");
   const [assignedPlatoon, setAssignedPlatoon] = useState<number>(1);
+  const [assignedBatch, setAssignedBatch] = useState<string>("");
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const utils = trpc.useUtils();
+  const { data: batches } = trpc.batches.list.useQuery();
 
   const { data: staff } = trpc.users.search.useQuery({ search, role: roleFilter || undefined });
   const createMutation = trpc.users.create.useMutation({
@@ -253,13 +331,24 @@ function StaffTab() {
       setOpen(false);
       setFullName(""); setUsername(""); setPassword("");
     },
-    onError: (err) => alert(err.message),
+    onError: (err: any) => alert(err.message),
   });
 
   const groupedStaff = {
     current: staff?.filter((s) => s.isActive && !s.isDeleted) || [],
     unassigned: staff?.filter((s) => !s.assignedPlatoon && s.isActive) || [],
     previous: staff?.filter((s) => s.isDeleted) || [],
+  };
+
+  const handleCreate = () => {
+    createMutation.mutate({ 
+      fullName, 
+      username, 
+      password, 
+      role, 
+      assignedPlatoon,
+      assignedBatchId: assignedBatch || undefined
+    });
   };
 
   return (
@@ -288,7 +377,7 @@ function StaffTab() {
               </div>
               <div>
                 <Label>Password</Label>
-                <Input type="text" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter password" />
+                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter password" />
               </div>
               <div>
                 <Label>Role</Label>
@@ -316,10 +405,23 @@ function StaffTab() {
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <Label>Assigned Batch (Optional)</Label>
+                <Select value={assignedBatch} onValueChange={setAssignedBatch}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select batch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {batches?.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Button
-                onClick={() => createMutation.mutate({ fullName, username, password, role, assignedPlatoon })}
+                onClick={handleCreate}
                 className="w-full bg-[#004d00] hover:bg-[#003300]"
-                disabled={createMutation.isPending}
+                disabled={createMutation.isPending || !fullName || !username || !password}
               >
                 {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create Staff"}
               </Button>
@@ -348,7 +450,7 @@ function StaffTab() {
 
         <div className="space-y-4">
           <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Current Batch Staff ({groupedStaff.current.length})</h4>
+            <h4 className="text-sm font-medium text-gray-700 mb-2">Current Staff ({groupedStaff.current.length})</h4>
             <StaffTable staff={groupedStaff.current} />
           </div>
           {groupedStaff.unassigned.length > 0 && (
@@ -372,6 +474,7 @@ function StaffTable({ staff }: { staff: any[] }) {
           <TableHead>Username</TableHead>
           <TableHead>Role</TableHead>
           <TableHead>Platoon</TableHead>
+          <TableHead>Batch</TableHead>
           <TableHead>Status</TableHead>
         </TableRow>
       </TableHeader>
@@ -384,6 +487,7 @@ function StaffTable({ staff }: { staff: any[] }) {
               <Badge variant="secondary">{RoleLabels[user.role]}</Badge>
             </TableCell>
             <TableCell>{user.assignedPlatoon ? `Platoon ${user.assignedPlatoon}` : "-"}</TableCell>
+            <TableCell>{user.assignedBatchId || "-"}</TableCell>
             <TableCell>
               <Badge variant={user.isActive ? "default" : "destructive"} className={user.isActive ? "bg-green-100 text-green-700" : ""}>
                 {user.isActive ? "Active" : "Inactive"}
@@ -391,6 +495,11 @@ function StaffTable({ staff }: { staff: any[] }) {
             </TableCell>
           </TableRow>
         ))}
+        {staff.length === 0 && (
+          <TableRow>
+            <TableCell colSpan={6} className="text-center text-gray-500 py-4">No staff found</TableCell>
+          </TableRow>
+        )}
       </TableBody>
     </Table>
   );
@@ -406,19 +515,18 @@ function BatchesTab() {
   const utils = trpc.useUtils();
 
   const createMutation = trpc.batches.create.useMutation({
-    onSuccess: () => {
-      utils.batches.list.invalidate();
-      setOpen(false); setName(""); setYear(new Date().getFullYear()); setDescription("");
-    },
-    onError: (err) => alert(err.message),
+    onSuccess: () => { utils.batches.list.invalidate(); setOpen(false); setName(""); setYear(new Date().getFullYear()); setDescription(""); },
+    onError: (err: any) => alert(err.message),
   });
 
   const activateMutation = trpc.batches.activate.useMutation({
     onSuccess: () => utils.batches.list.invalidate(),
+    onError: (err: any) => alert(err.message),
   });
 
   const deactivateMutation = trpc.batches.deactivate.useMutation({
     onSuccess: () => utils.batches.list.invalidate(),
+    onError: (err: any) => alert(err.message),
   });
 
   return (

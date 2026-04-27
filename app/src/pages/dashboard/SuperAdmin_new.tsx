@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { trpc } from "@/providers/trpc";
-import { Plus, Users, Shield, Layers, Settings, Eye, EyeOff, Loader2, Download, Edit2, Trash2, Search } from "lucide-react";
+import { Plus, Users, Shield, Layers, Settings, Eye, EyeOff, Loader2, Download, Edit2, Trash2 } from "lucide-react";
 import { RoleLabels } from "@contracts/constants";
 import { useAuth as useAuthHook } from "@/hooks/useAuth";
 import { QuickActionCard } from "@/components/dashboard/StatCards";
