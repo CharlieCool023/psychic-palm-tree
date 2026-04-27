@@ -4,8 +4,8 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "cd app && npm start",
-    "healthcheckPath": "/api/trpc/ping",
+    "startCommand": "cd app && NODE_ENV=production node dist/boot.js",
+    "healthcheckPath": "/api/health",
     "restartPolicyType": "ON_FAILURE"
   }
 }

@@ -19,6 +19,8 @@ app.use("/api/trpc/*", async (c) => {
   });
 });
 
+app.get("/api/health", (c) => c.json({ ok: true }));
+
 app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));
 
 export default app;
