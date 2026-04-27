@@ -5,7 +5,7 @@
 import bcrypt from "bcryptjs";
 
 const PROJECT_ID = "nyscondocamp";
-const API_KEY = "AIzaSyDbqa9fjMVy_NXUlWFBKz76gaII8ijAV-o";
+const API_KEY = process.env.VITE_FIREBASE_API_KEY || process.env.FIREBASE_API_KEY || "";
 const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
 async function firestoreGet(path: string) {

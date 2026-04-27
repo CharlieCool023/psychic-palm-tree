@@ -3,7 +3,7 @@ import { getAuth, connectAuthEmulator } from "firebase/auth";
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDbqa9fjMVy_NXUlWFBKz76gaII8ijAV-o",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: "nyscondocamp.firebaseapp.com",
   projectId: "nyscondocamp",
   storageBucket: "nyscondocamp.firebasestorage.app",
