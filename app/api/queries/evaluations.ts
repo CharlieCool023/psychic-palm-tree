@@ -1,5 +1,5 @@
 import type { firestore as FirestoreType } from "firebase-admin";
-import { getDb } from "./connection";
+import { getDb, fromDoc } from "./connection";
 import type { Evaluation, InsertEvaluation } from "../../contracts/types";
 
 const db = getDb();
@@ -16,7 +16,7 @@ export async function createEvaluation(data: InsertEvaluation): Promise<string> 
 export async function getEvaluationById(id: string): Promise<Evaluation | null> {
   const doc = await db.collection('evaluations').doc(id).get();
   if (!doc.exists) return null;
-  return { id: doc.id, ...doc.data() } as Evaluation;
+  return fromDoc<Evaluation>({ id: doc.id, ...doc.data() });
 }
 
 export async function getEvaluationByCorpsMemberAndRole(corpsMemberId: string, evaluatorRole: string): Promise<Evaluation | null> {
@@ -27,7 +27,7 @@ export async function getEvaluationByCorpsMemberAndRole(corpsMemberId: string, e
     .get();
   if (snapshot.empty) return null;
   const doc = snapshot.docs[0];
-  return { id: doc.id, ...doc.data() } as Evaluation;
+  return fromDoc<Evaluation>({ id: doc.id, ...doc.data() });
 }
 
 export async function getEvaluationsByCorpsMember(corpsMemberId: string): Promise<Evaluation[]> {
@@ -35,7 +35,7 @@ export async function getEvaluationsByCorpsMember(corpsMemberId: string): Promis
     .where('corpsMemberId', '==', corpsMemberId)
     .orderBy('createdAt', 'desc')
     .get();
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Evaluation));
+  return snapshot.docs.map(doc => fromDoc<Evaluation>({ id: doc.id, ...doc.data() }));
 }
 
 export async function getEvaluationsByEvaluator(evaluatorId: string): Promise<Evaluation[]> {
@@ -43,7 +43,7 @@ export async function getEvaluationsByEvaluator(evaluatorId: string): Promise<Ev
     .where('evaluatorId', '==', evaluatorId)
     .orderBy('createdAt', 'desc')
     .get();
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Evaluation));
+  return snapshot.docs.map(doc => fromDoc<Evaluation>({ id: doc.id, ...doc.data() }));
 }
 
 export async function updateEvaluation(id: string, data: Partial<InsertEvaluation>): Promise<void> {

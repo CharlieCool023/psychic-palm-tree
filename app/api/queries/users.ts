@@ -1,4 +1,4 @@
-import { getDb } from "./connection";
+import { getDb, fromDoc } from "./connection";
 import type { InsertUser, User } from "../../contracts/types";
 
 const db = getDb();
@@ -6,14 +6,14 @@ const db = getDb();
 export async function findUserById(id: string): Promise<User | null> {
   const doc = await db.collection('users').doc(id).get();
   if (!doc.exists) return null;
-  return { id: doc.id, ...doc.data() } as User;
+  return fromDoc<User>({ id: doc.id, ...doc.data() });
 }
 
 export async function findUserByUsername(username: string): Promise<User | null> {
   const snapshot = await db.collection('users').where('username', '==', username).limit(1).get();
   if (snapshot.empty) return null;
   const doc = snapshot.docs[0];
-  return { id: doc.id, ...doc.data() } as User;
+  return fromDoc<User>({ id: doc.id, ...doc.data() });
 }
 
 export async function upsertUser(data: InsertUser): Promise<void> {
@@ -41,7 +41,7 @@ export async function getActiveUsers(): Promise<User[]> {
     .where('isDeleted', '==', false)
     .orderBy('createdAt', 'desc')
     .get();
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+  return snapshot.docs.map(doc => fromDoc<User>({ id: doc.id, ...doc.data() }));
 }
 
 export async function getUsersByRole(role: string): Promise<User[]> {
@@ -50,7 +50,7 @@ export async function getUsersByRole(role: string): Promise<User[]> {
     .where('isDeleted', '==', false)
     .orderBy('createdAt', 'desc')
     .get();
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+  return snapshot.docs.map(doc => fromDoc<User>({ id: doc.id, ...doc.data() }));
 }
 
 export async function getAllUsers(): Promise<User[]> {
@@ -58,7 +58,7 @@ export async function getAllUsers(): Promise<User[]> {
     .where('isDeleted', '==', false)
     .orderBy('createdAt', 'desc')
     .get();
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+  return snapshot.docs.map(doc => fromDoc<User>({ id: doc.id, ...doc.data() }));
 }
 
 export async function updateUser(id: string, data: Partial<InsertUser>): Promise<void> {
@@ -89,7 +89,7 @@ export async function searchUsers(search: string, role?: string): Promise<User[]
     query = query.where('role', '==', role);
   }
   const snapshot = await query.orderBy('createdAt', 'desc').get();
-  const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+  const users = snapshot.docs.map(doc => fromDoc<User>({ id: doc.id, ...doc.data() }));
   if (search) {
     const s = search.toLowerCase();
     return users.filter(u =>
@@ -105,7 +105,7 @@ export async function getUsersByPlatoon(platoon: number): Promise<User[]> {
     .where('isDeleted', '==', false)
     .orderBy('createdAt', 'desc')
     .get();
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+  return snapshot.docs.map(doc => fromDoc<User>({ id: doc.id, ...doc.data() }));
 }
 
 // OAuth compatibility
