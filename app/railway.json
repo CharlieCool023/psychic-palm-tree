@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "cd app && NODE_ENV=production node dist/boot.js",
+    "startCommand": "NODE_ENV=production node dist/boot.js",
     "healthcheckPath": "/api/health",
     "restartPolicyType": "ON_FAILURE"
   }
