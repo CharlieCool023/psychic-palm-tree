@@ -38,7 +38,7 @@ app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));
 
 export default app;
 
-if (env.isProduction && process.env.FUNCTION_TARGET === undefined) {
+if (env.isProduction && process.env.FUNCTION_TARGET === undefined && !process.env.VERCEL) {
   const { serve } = await import("@hono/node-server");
   const { serveStaticFiles } = await import("./lib/vite");
   serveStaticFiles(app);
