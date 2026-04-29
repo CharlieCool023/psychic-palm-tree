@@ -1,36 +1,22 @@
 import "dotenv/config";
-import { Hono } from "hono";
-import { cors } from "hono/cors";
-import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
-import { appRouter } from "../api/router.js";
 
-const app = new Hono();
+export default function handler(req, res) {
+  // Simple health check
+  if (req.url === "/api/health" && req.method === "GET") {
+    res.status(200).json({ ok: true, ts: Date.now() });
+    return;
+  }
 
-app.use("*", cors({
-  origin: [
-    "https://nyscondocamp.web.app",
-    "https://nyscondocamp.firebaseapp.com",
-    "http://localhost:3000",
-    "http://localhost:5000",
-  ],
-  allowMethods: ["GET", "POST", "OPTIONS"],
-  allowHeaders: ["Content-Type", "Authorization"],
-  credentials: true,
-}));
+  // Simple TRPC ping
+  if (req.url?.startsWith("/api/trpc/ping") && req.method === "GET") {
+    res.status(200).json({
+      result: {
+        data: { ok: true, ts: Date.now() }
+      }
+    });
+    return;
+  }
 
-app.get("/health", (c) => c.json({ ok: true, ts: Date.now() }));
-
-app.all("/trpc/*", async (c) => {
-  return fetchRequestHandler({
-    endpoint: "/api/trpc",
-    req: c.req.raw,
-    router: appRouter,
-    createContext: () => ({
-      req: c.req.raw,
-      resHeaders: c.res.headers,
-      user: null,
-    }),
-  });
-});
-
-export default app;
+  // Default response
+  res.status(404).json({ error: "Not found" });
+}
