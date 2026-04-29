@@ -1,33 +1,43 @@
 import {
-  mysqlTable,
-  mysqlEnum,
+  pgTable,
+  pgEnum,
   serial,
   varchar,
   text,
   timestamp,
-  int,
+  integer,
   boolean,
-  bigint,
   date,
   decimal,
-} from "drizzle-orm/mysql-core";
+} from "drizzle-orm/pg-core";
 
-export const users = mysqlTable("users", {
+export const userRole = pgEnum("role", [
+  "super_admin",
+  "state_commandant",
+  "camp_commandant",
+  "platoon_instructor",
+  "man_o_war_instructor",
+  "soldier",
+]);
+
+export const batchState = pgEnum("batch_state", ["ondo", "lagos"]);
+
+export const evaluatorRole = pgEnum("evaluator_role", [
+  "platoon_instructor",
+  "man_o_war_instructor",
+]);
+
+export const deploymentState = pgEnum("state_of_deployment", ["ondo", "lagos"]);
+
+export const users = pgTable("users", {
   id: varchar("id", { length: 255 }).primaryKey(),
   fullName: varchar("full_name", { length: 255 }).notNull(),
   username: varchar("username", { length: 255 }).notNull().unique(),
   password: varchar("password", { length: 255 }).notNull(),
   email: varchar("email", { length: 320 }),
-  role: mysqlEnum("role", [
-    "super_admin",
-    "state_commandant",
-    "camp_commandant",
-    "platoon_instructor",
-    "man_o_war_instructor",
-    "soldier",
-  ]).notNull(),
+  role: userRole("role").notNull(),
   state: varchar("state", { length: 50 }),
-  assignedPlatoon: int("assigned_platoon"),
+  assignedPlatoon: integer("assigned_platoon"),
   assignedBatchId: varchar("assigned_batch_id", { length: 255 }),
   isActive: boolean("is_active").default(true).notNull(),
   isDeleted: boolean("is_deleted").default(false).notNull(),
@@ -39,11 +49,11 @@ export const users = mysqlTable("users", {
   lastSignInAt: timestamp("last_sign_in_at"),
 });
 
-export const batches = mysqlTable("batches", {
+export const batches = pgTable("batches", {
   id: varchar("id", { length: 255 }).primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
-  year: int("year").notNull(),
-  state: mysqlEnum("state", ["ondo", "lagos"]).notNull(),
+  year: integer("year").notNull(),
+  state: batchState("state").notNull(),
   description: text("description"),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -53,7 +63,7 @@ export const batches = mysqlTable("batches", {
     .$onUpdate(() => new Date()),
 });
 
-export const corpsMembers = mysqlTable("corps_members", {
+export const corpsMembers = pgTable("corps_members", {
   id: varchar("id", { length: 255 }).primaryKey(),
   batchId: varchar("batch_id", { length: 255 }).notNull(),
   passportPhoto: text("passport_photo"),
@@ -64,10 +74,10 @@ export const corpsMembers = mysqlTable("corps_members", {
   callUpNumber: varchar("call_up_number", { length: 100 }).notNull().unique(),
   phoneNumber: varchar("phone_number", { length: 20 }).notNull(),
   stateOfOrigin: varchar("state_of_origin", { length: 50 }).notNull(),
-  stateOfDeployment: mysqlEnum("state_of_deployment", ["ondo", "lagos"]).notNull(),
+  stateOfDeployment: deploymentState("state_of_deployment").notNull(),
   qualification: varchar("qualification", { length: 100 }).notNull(),
   areaOfSpecialization: varchar("area_of_specialization", { length: 100 }).notNull(),
-  platoon: int("platoon").notNull(),
+  platoon: integer("platoon").notNull(),
   campExperienceComment: text("camp_experience_comment"),
   isEvaluatedByPlatoon: boolean("is_evaluated_by_platoon").default(false).notNull(),
   isEvaluatedByManOWar: boolean("is_evaluated_by_man_o_war").default(false).notNull(),
@@ -80,7 +90,7 @@ export const corpsMembers = mysqlTable("corps_members", {
     .$onUpdate(() => new Date()),
 });
 
-export const higherInstitutions = mysqlTable("higher_institutions", {
+export const higherInstitutions = pgTable("higher_institutions", {
   id: varchar("id", { length: 255 }).primaryKey(),
   corpsMemberId: varchar("corps_member_id", { length: 255 }).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
@@ -89,22 +99,19 @@ export const higherInstitutions = mysqlTable("higher_institutions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const evaluations = mysqlTable("evaluations", {
+export const evaluations = pgTable("evaluations", {
   id: varchar("id", { length: 255 }).primaryKey(),
   corpsMemberId: varchar("corps_member_id", { length: 255 }).notNull(),
   evaluatorId: varchar("evaluator_id", { length: 255 }).notNull(),
-  evaluatorRole: mysqlEnum("evaluator_role", [
-    "platoon_instructor",
-    "man_o_war_instructor",
-  ]).notNull(),
-  leadershipInitiative: int("leadership_initiative").notNull(),
-  professionalBearing: int("professional_bearing").notNull(),
-  physicalFitness: int("physical_fitness").notNull(),
-  communicationSkills: int("communication_skills").notNull(),
-  technicalCompetence: int("technical_competence").notNull(),
-  teamworkCooperation: int("teamwork_cooperation").notNull(),
-  reliabilityDependability: int("reliability_dependability").notNull(),
-  respectDignityRights: int("respect_dignity_rights").notNull(),
+  evaluatorRole: evaluatorRole("evaluator_role").notNull(),
+  leadershipInitiative: integer("leadership_initiative").notNull(),
+  professionalBearing: integer("professional_bearing").notNull(),
+  physicalFitness: integer("physical_fitness").notNull(),
+  communicationSkills: integer("communication_skills").notNull(),
+  technicalCompetence: integer("technical_competence").notNull(),
+  teamworkCooperation: integer("teamwork_cooperation").notNull(),
+  reliabilityDependability: integer("reliability_dependability").notNull(),
+  respectDignityRights: integer("respect_dignity_rights").notNull(),
   overallAverage: decimal("overall_average", { precision: 4, scale: 2 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
@@ -113,7 +120,7 @@ export const evaluations = mysqlTable("evaluations", {
     .$onUpdate(() => new Date()),
 });
 
-export const comments = mysqlTable("comments", {
+export const comments = pgTable("comments", {
   id: varchar("id", { length: 255 }).primaryKey(),
   corpsMemberId: varchar("corps_member_id", { length: 255 }).notNull(),
   soldierId: varchar("soldier_id", { length: 255 }).notNull(),
@@ -125,7 +132,7 @@ export const comments = mysqlTable("comments", {
     .$onUpdate(() => new Date()),
 });
 
-export const commandantComments = mysqlTable("commandant_comments", {
+export const commandantComments = pgTable("commandant_comments", {
   id: varchar("id", { length: 255 }).primaryKey(),
   corpsMemberId: varchar("corps_member_id", { length: 255 }).notNull().unique(),
   comment: text("comment").notNull(),
@@ -136,7 +143,7 @@ export const commandantComments = mysqlTable("commandant_comments", {
     .$onUpdate(() => new Date()),
 });
 
-export const auditLogs = mysqlTable("audit_logs", {
+export const auditLogs = pgTable("audit_logs", {
   id: varchar("id", { length: 255 }).primaryKey(),
   userId: varchar("user_id", { length: 255 }),
   action: varchar("action", { length: 255 }).notNull(),

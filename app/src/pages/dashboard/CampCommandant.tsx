@@ -262,8 +262,8 @@ export default function CampCommandantDashboard() {
                       <p className="text-sm text-gray-600 mt-1">Download all corps member data with no empty fields</p>
                       <div className="mt-3">
                         <Label>Select Batch</Label>
-                        <Select value={batchId || ""} onValueChange={setBatchId} className="mt-1">
-                          <SelectTrigger>
+                        <Select value={batchId || ""} onValueChange={setBatchId}>
+                          <SelectTrigger className="mt-1">
                             <SelectValue placeholder="All Batches" />
                           </SelectTrigger>
                           <SelectContent>

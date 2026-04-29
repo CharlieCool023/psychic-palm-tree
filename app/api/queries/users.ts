@@ -1,114 +1,132 @@
-import { getDb, fromDoc } from "./connection";
+import { getDb } from "./connection";
 import type { InsertUser, User } from "../../contracts/types";
+import { nanoid } from "nanoid";
 
 const db = getDb();
 
 export async function findUserById(id: string): Promise<User | null> {
-  const doc = await db.collection('users').doc(id).get();
-  if (!doc.exists) return null;
-  return fromDoc<User>({ id: doc.id, ...doc.data() });
+  const { data, error } = await db.from("users").select("*").eq("id", id).single();
+  if (error) return null;
+  return data as User;
 }
 
 export async function findUserByUsername(username: string): Promise<User | null> {
-  const snapshot = await db.collection('users').where('username', '==', username).limit(1).get();
-  if (snapshot.empty) return null;
-  const doc = snapshot.docs[0];
-  return fromDoc<User>({ id: doc.id, ...doc.data() });
+  const { data, error } = await db
+    .from("users")
+    .select("*")
+    .eq("username", username.toLowerCase())
+    .limit(1)
+    .maybeSingle();
+  if (error) return null;
+  return data as User;
 }
 
 export async function upsertUser(data: InsertUser): Promise<void> {
-  const existingUser = await findUserByUsername(data.username);
+  const now = new Date();
   const updateData = {
     ...data,
-    lastSignInAt: new Date(),
-    updatedAt: new Date(),
+    last_sign_in_at: now,
+    updated_at: now,
   };
-  if (existingUser) {
-    await db.collection('users').doc(existingUser.id).update(updateData);
-  } else {
-    await db.collection('users').add({
-      ...data,
-      lastSignInAt: new Date(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
+
+  const { error } = await db
+    .from("users")
+    .upsert(updateData, {
+      onConflict: "username",
+      ignoreDuplicates: false,
     });
-  }
+
+  if (error) throw error;
 }
 
 export async function getActiveUsers(): Promise<User[]> {
-  const snapshot = await db.collection('users')
-    .where('isActive', '==', true)
-    .where('isDeleted', '==', false)
-    .orderBy('createdAt', 'desc')
-    .get();
-  return snapshot.docs.map(doc => fromDoc<User>({ id: doc.id, ...doc.data() }));
+  const { data, error } = await db
+    .from("users")
+    .select("*")
+    .eq("is_active", true)
+    .eq("is_deleted", false)
+    .order("created_at", { ascending: false });
+  if (error) return [];
+  return data as User[];
 }
 
 export async function getUsersByRole(role: string): Promise<User[]> {
-  const snapshot = await db.collection('users')
-    .where('role', '==', role)
-    .where('isDeleted', '==', false)
-    .orderBy('createdAt', 'desc')
-    .get();
-  return snapshot.docs.map(doc => fromDoc<User>({ id: doc.id, ...doc.data() }));
+  const { data, error } = await db
+    .from("users")
+    .select("*")
+    .eq("role", role)
+    .eq("is_deleted", false)
+    .order("created_at", { ascending: false });
+  if (error) return [];
+  return data as User[];
 }
 
 export async function getAllUsers(): Promise<User[]> {
-  const snapshot = await db.collection('users')
-    .where('isDeleted', '==', false)
-    .orderBy('createdAt', 'desc')
-    .get();
-  return snapshot.docs.map(doc => fromDoc<User>({ id: doc.id, ...doc.data() }));
+  const { data, error } = await db
+    .from("users")
+    .select("*")
+    .eq("is_deleted", false)
+    .order("created_at", { ascending: false });
+  if (error) return [];
+  return data as User[];
 }
 
 export async function updateUser(id: string, data: Partial<InsertUser>): Promise<void> {
-  await db.collection('users').doc(id).update({
-    ...data,
-    updatedAt: new Date(),
-  });
+  const { error } = await db
+    .from("users")
+    .update({ ...data, updated_at: new Date() })
+    .eq("id", id);
+  if (error) throw error;
 }
 
 export async function deactivateUser(id: string): Promise<void> {
-  await db.collection('users').doc(id).update({
-    isActive: false,
-    updatedAt: new Date(),
-  });
+  const { error } = await db
+    .from("users")
+    .update({ is_active: false, updated_at: new Date() })
+    .eq("id", id);
+  if (error) throw error;
 }
 
 export async function softDeleteUser(id: string): Promise<void> {
-  await db.collection('users').doc(id).update({
-    isDeleted: true,
-    isActive: false,
-    updatedAt: new Date(),
-  });
+  const { error } = await db
+    .from("users")
+    .update({ is_deleted: true, is_active: false, updated_at: new Date() })
+    .eq("id", id);
+  if (error) throw error;
 }
 
 export async function searchUsers(search: string, role?: string): Promise<User[]> {
-  let query: FirebaseFirestore.Query = db.collection('users').where('isDeleted', '==', false);
+  let query = db.from("users").select("*").eq("is_deleted", false);
+  
   if (role) {
-    query = query.where('role', '==', role);
+    query = query.eq("role", role);
   }
-  const snapshot = await query.orderBy('createdAt', 'desc').get();
-  const users = snapshot.docs.map(doc => fromDoc<User>({ id: doc.id, ...doc.data() }));
-  if (search) {
-    const s = search.toLowerCase();
-    return users.filter(u =>
-      u.fullName?.toLowerCase().includes(s) || u.username?.toLowerCase().includes(s)
-    );
-  }
-  return users;
+  
+  const { data, error } = await query.order("created_at", { ascending: false });
+  if (error) return [];
+
+  const users = data as User[];
+  if (!search) return users;
+
+  const s = search.toLowerCase();
+  return users.filter(
+    (u) =>
+      u.fullName?.toLowerCase().includes(s) ||
+      u.username?.toLowerCase().includes(s)
+  );
 }
 
 export async function getUsersByPlatoon(platoon: number): Promise<User[]> {
-  const snapshot = await db.collection('users')
-    .where('assignedPlatoon', '==', platoon)
-    .where('isDeleted', '==', false)
-    .orderBy('createdAt', 'desc')
-    .get();
-  return snapshot.docs.map(doc => fromDoc<User>({ id: doc.id, ...doc.data() }));
+  const { data, error } = await db
+    .from("users")
+    .select("*")
+    .eq("assigned_platoon", platoon)
+    .eq("is_deleted", false)
+    .order("created_at", { ascending: false });
+  if (error) return [];
+  return data as User[];
 }
 
-// OAuth compatibility
 export async function findUserByUnionId(_unionId: string): Promise<User | null> {
   return null;
 }

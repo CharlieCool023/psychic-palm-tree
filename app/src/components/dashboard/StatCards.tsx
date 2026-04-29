@@ -78,3 +78,13 @@ export function DashboardStats({ stats }: { stats: Record<string, number | strin
     </div>
   );
 }
+
+export function QuickActionCard({ title, description, icon, onClick }: { title: string; description: string; icon: React.ReactNode; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="p-4 border rounded-lg hover:border-[#004d00] hover:bg-green-50 transition-colors text-left">
+      <div className="w-10 h-10 bg-[#004d00]/10 rounded-lg flex items-center justify-center text-[#004d00] mb-3">{icon}</div>
+      <h3 className="font-medium text-gray-900">{title}</h3>
+      <p className="text-sm text-gray-600 mt-1">{description}</p>
+    </button>
+  );
+}

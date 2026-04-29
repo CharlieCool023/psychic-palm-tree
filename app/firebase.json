@@ -1,4 +1,8 @@
 {
+  "functions": {
+    "source": ".",
+    "runtime": "nodejs18"
+  },
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
@@ -7,6 +11,10 @@
     "public": "dist/public",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
+      {
+        "source": "/api/**",
+        "function": "api"
+      },
       {
         "source": "**",
         "destination": "/index.html"

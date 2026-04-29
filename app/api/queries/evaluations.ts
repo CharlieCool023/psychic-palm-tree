@@ -1,67 +1,65 @@
-import type { firestore as FirestoreType } from "firebase-admin";
-import { getDb, fromDoc } from "./connection";
+import { getDb } from "./connection";
 import type { Evaluation, InsertEvaluation } from "../../contracts/types";
 
 const db = getDb();
 
 export async function createEvaluation(data: InsertEvaluation): Promise<string> {
-  const docRef = await db.collection('evaluations').add({
+  const id = crypto.randomUUID();
+  const { error } = await db.from("evaluations").insert({
+    id,
     ...data,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    created_at: new Date(),
+    updated_at: new Date(),
   });
-  return docRef.id;
+  if (error) throw error;
+  return id;
 }
 
 export async function getEvaluationById(id: string): Promise<Evaluation | null> {
-  const doc = await db.collection('evaluations').doc(id).get();
-  if (!doc.exists) return null;
-  return fromDoc<Evaluation>({ id: doc.id, ...doc.data() });
+  const { data, error } = await db.from("evaluations").select("*").eq("id", id).maybeSingle();
+  if (error) return null;
+  return data as Evaluation | null;
 }
 
 export async function getEvaluationByCorpsMemberAndRole(corpsMemberId: string, evaluatorRole: string): Promise<Evaluation | null> {
-  const snapshot = await db.collection('evaluations')
-    .where('corpsMemberId', '==', corpsMemberId)
-    .where('evaluatorRole', '==', evaluatorRole)
+  const { data, error } = await db
+    .from("evaluations")
+    .select("*")
+    .eq("corps_member_id", corpsMemberId)
+    .eq("evaluator_role", evaluatorRole)
     .limit(1)
-    .get();
-  if (snapshot.empty) return null;
-  const doc = snapshot.docs[0];
-  return fromDoc<Evaluation>({ id: doc.id, ...doc.data() });
+    .maybeSingle();
+  if (error) return null;
+  return data as Evaluation | null;
 }
 
 export async function getEvaluationsByCorpsMember(corpsMemberId: string): Promise<Evaluation[]> {
-  const snapshot = await db.collection('evaluations')
-    .where('corpsMemberId', '==', corpsMemberId)
-    .orderBy('createdAt', 'desc')
-    .get();
-  return snapshot.docs.map(doc => fromDoc<Evaluation>({ id: doc.id, ...doc.data() }));
+  const { data, error } = await db.from("evaluations").select("*").eq("corps_member_id", corpsMemberId).order("created_at", { ascending: false });
+  if (error) return [];
+  return data as Evaluation[];
 }
 
 export async function getEvaluationsByEvaluator(evaluatorId: string): Promise<Evaluation[]> {
-  const snapshot = await db.collection('evaluations')
-    .where('evaluatorId', '==', evaluatorId)
-    .orderBy('createdAt', 'desc')
-    .get();
-  return snapshot.docs.map(doc => fromDoc<Evaluation>({ id: doc.id, ...doc.data() }));
+  const { data, error } = await db.from("evaluations").select("*").eq("evaluator_id", evaluatorId).order("created_at", { ascending: false });
+  if (error) return [];
+  return data as Evaluation[];
 }
 
 export async function updateEvaluation(id: string, data: Partial<InsertEvaluation>): Promise<void> {
-  await db.collection('evaluations').doc(id).update({
-    ...data,
-    updatedAt: new Date(),
-  });
+  const { error } = await db.from("evaluations").update({ ...data, updated_at: new Date() }).eq("id", id);
+  if (error) throw error;
 }
 
 export async function deleteEvaluation(id: string): Promise<void> {
-  await db.collection('evaluations').doc(id).delete();
+  const { error } = await db.from("evaluations").delete().eq("id", id);
+  if (error) throw error;
 }
 
 export async function getEvaluationsCount(evaluatorId?: string): Promise<number> {
-  let query: FirestoreType.Query = db.collection('evaluations');
-  if (evaluatorId) {
-    query = query.where('evaluatorId', '==', evaluatorId);
-  }
-  const snapshot = await query.get();
-  return snapshot.size;
+  let query = db.from("evaluations").select("*", { count: "exact", head: true });
+  if (evaluatorId) query = query.eq("evaluator_id", evaluatorId);
+  
+  const { count, error } = await query;
+  if (error) return 0;
+  return count || 0;
 }
