@@ -1,12 +1,27 @@
-import "dotenv/config";
-import bcrypt from "bcryptjs";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Simple login API for Vercel - hardcoded for demo
+const users = [
+  {
+    id: "superadmin",
+    username: "superadmin",
+    password: "admin123", // Plain text for demo - hash in production
+    role: "super_admin",
+    fullName: "Super Admin",
+    isActive: true,
+    isDeleted: false
+  }
+];
 
 export default async function handler(req, res) {
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -18,24 +33,19 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Username and password required" });
     }
 
-    // Find user
-    const { data: user, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("username", username.toLowerCase())
-      .single();
+    // Find user (simple array search for demo)
+    const user = users.find(u => u.username === username.toLowerCase());
 
-    if (error || !user) {
+    if (!user) {
       return res.status(401).json({ error: "Invalid username or password" });
     }
 
-    if (!user.is_active || user.is_deleted) {
+    if (!user.isActive || user.isDeleted) {
       return res.status(401).json({ error: "Account is inactive" });
     }
 
-    // Check password
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) {
+    // Check password (simple comparison for demo)
+    if (password !== user.password) {
       return res.status(401).json({ error: "Invalid username or password" });
     }
 
@@ -43,24 +53,22 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "Invalid role for this login page" });
     }
 
-    // Update last sign in
-    await supabase
-      .from("users")
-      .update({ last_sign_in_at: new Date() })
-      .eq("id", user.id);
-
     // Return user data (without password)
     const userData = {
       id: user.id,
-      fullName: user.full_name,
+      fullName: user.fullName,
       username: user.username,
       role: user.role,
       state: user.state,
-      assignedPlatoon: user.assigned_platoon,
-      assignedBatchId: user.assigned_batch_id,
+      assignedPlatoon: user.assignedPlatoon,
+      assignedBatchId: user.assignedBatchId,
     };
 
-    res.status(200).json({ result: { data: userData } });
+    res.status(200).json({
+      result: {
+        data: userData
+      }
+    });
 
   } catch (error) {
     console.error("Login error:", error);
