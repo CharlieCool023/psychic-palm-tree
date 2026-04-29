@@ -3,7 +3,12 @@
  */
 import "dotenv/config";
 import bcrypt from "bcryptjs";
-import { supabaseAdmin } from "../api/lib/supabase.js";
+import { createClient } from "@supabase/supabase-js";
+import "dotenv/config";
+
+const supabaseUrl = process.env.SUPABASE_URL || "";
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
 async function seed() {
   // Seed super admin
