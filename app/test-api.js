@@ -15,26 +15,28 @@ async function testAPI() {
       console.log("Health data:", healthData);
     }
 
-    // Test login endpoint
-    const loginResponse = await fetch(`${baseUrl}/api/login`, {
+    // Test TRPC login endpoint
+    const trpcLoginResponse = await fetch(`${baseUrl}/api/trpc/customAuth.login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        username: "superadmin",
-        password: "admin123",
-        expectedRole: "super_admin"
+        input: {
+          username: "superadmin",
+          password: "admin123",
+          expectedRole: "super_admin"
+        }
       })
     });
-    console.log("Login endpoint:", loginResponse.status);
+    console.log("TRPC login endpoint:", trpcLoginResponse.status);
 
-    if (loginResponse.ok) {
-      const loginData = await loginResponse.json();
-      console.log("Login successful:", loginData.result.data);
+    if (trpcLoginResponse.ok) {
+      const trpcLoginData = await trpcLoginResponse.json();
+      console.log("TRPC login successful:", trpcLoginData.result.data);
     } else {
-      const errorData = await loginResponse.text();
-      console.log("Login failed:", errorData);
+      const errorData = await trpcLoginResponse.text();
+      console.log("TRPC login failed:", errorData);
     }
 
   } catch (err) {
