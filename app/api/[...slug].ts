@@ -4,7 +4,7 @@ let handlerPromise: Promise<any>;
 
 async function getHandler() {
   try {
-    const module = await import('../src/api/boot');
+    const module = await import('../dist/api.js');
     return handle(module.default);
   } catch (error: any) {
     return (req: any, res: any) => {
