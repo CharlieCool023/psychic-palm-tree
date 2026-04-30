@@ -1,5 +1,5 @@
-import { supabase } from "../lib/supabase";
+import { supabaseAdmin } from "../lib/supabase";
 
 export function getDb() {
-  return supabase;
+  return supabaseAdmin;
 }
