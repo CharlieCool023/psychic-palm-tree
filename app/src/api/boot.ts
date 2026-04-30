@@ -9,8 +9,6 @@ import { env } from "./lib/env";
 
 const app = new Hono<{ Bindings: HttpBindings }>();
 
-app.use(bodyLimit({ maxSize: 50 * 1024 * 1024 }));
-
 app.use("/api/*", cors({
   origin: [
     "https://nyscondocamp.web.app",
