@@ -5,8 +5,8 @@
   "type": "module",
   "main": "dist/functions.js",
   "scripts": {
-    "build": "vite build && npm run build:api",
-    "build:api": "esbuild src/api/boot.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/api.js",
+    "dev": "vite",
+    "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "node src/api/server.js",
