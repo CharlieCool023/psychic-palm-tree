@@ -12,6 +12,9 @@ function required(name: string): string {
 export const env = {
   appId: required("APP_ID"),
   appSecret: required("APP_SECRET"),
+  supabaseUrl: required("SUPABASE_URL"),
+  supabaseAnonKey: required("SUPABASE_ANON_KEY"),
+  supabaseServiceRoleKey: required("SUPABASE_SERVICE_ROLE_KEY"),
   isProduction: process.env.NODE_ENV === "production",
   ownerUnionId: process.env.OWNER_UNION_ID ?? "",
   kimiAuthUrl: process.env.KIMI_AUTH_URL ?? "",

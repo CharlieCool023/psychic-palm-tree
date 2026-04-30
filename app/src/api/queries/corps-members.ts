@@ -1,5 +1,5 @@
 import { getDb } from "./connection";
-import type { InsertCorpsMember, CorpsMember } from "../../contracts/types";
+import type { InsertCorpsMember, CorpsMember } from "../../../contracts/types";
 
 const db = getDb();
 

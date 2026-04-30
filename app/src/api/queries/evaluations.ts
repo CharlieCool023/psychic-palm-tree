@@ -1,5 +1,5 @@
 import { getDb } from "./connection";
-import type { Evaluation, InsertEvaluation } from "../../contracts/types";
+import type { Evaluation, InsertEvaluation } from "../../../contracts/types";
 
 const db = getDb();
 

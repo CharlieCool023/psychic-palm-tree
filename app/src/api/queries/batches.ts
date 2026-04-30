@@ -1,5 +1,5 @@
 import { getDb } from "./connection";
-import type { Batch, InsertBatch } from "../../contracts/types";
+import type { Batch, InsertBatch } from "../../../contracts/types";
 
 const db = getDb();
 

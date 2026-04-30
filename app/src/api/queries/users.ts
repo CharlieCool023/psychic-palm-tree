@@ -1,6 +1,5 @@
 import { getDb } from "./connection";
-import type { InsertUser, User } from "../../contracts/types";
-import { nanoid } from "nanoid";
+import type { InsertUser, User } from "../../../contracts/types";
 
 const db = getDb();
 

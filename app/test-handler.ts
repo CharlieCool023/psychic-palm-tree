@@ -11,7 +11,7 @@ const req = {
 const res = {
   setHeader: console.log,
   statusCode: 200,
-  end: (data) => console.log("Response:", data)
+  end: (data: any) => console.log("Response:", data)
 };
 
-handler(req as any, res as any).catch(console.error);
+(handler(req as any, res as any) as unknown as Promise<void>)?.catch?.(console.error);

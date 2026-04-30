@@ -1,5 +1,5 @@
 import { getDb } from "./connection";
-import type { InsertAuditLog, AuditLog } from "../../contracts/types";
+import type { InsertAuditLog, AuditLog } from "../../../contracts/types";
 
 const db = getDb();
 

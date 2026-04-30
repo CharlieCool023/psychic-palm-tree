@@ -1,5 +1,5 @@
 import { getDb } from "./connection";
-import type { Comment, InsertComment, CommandantComment, InsertCommandantComment } from "../../contracts/types";
+import type { Comment, InsertComment, CommandantComment, InsertCommandantComment } from "../../../contracts/types";
 
 const db = getDb();
 
