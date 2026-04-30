@@ -2,10 +2,12 @@
   "name": "my-app",
   "private": true,
   "version": "0.0.0",
+  "type": "module",
   "main": "dist/functions.js",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && npm run build:api",
+    "build:api": "esbuild src/api/boot.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/api.js",
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "node src/api/server.mjs",
